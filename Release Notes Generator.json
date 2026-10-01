@@ -1,0 +1,208 @@
+{
+  "name": "Release Notes Generator",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -32,
+        -352
+      ],
+      "id": "58069c42-9ec8-4b56-bbab-436cfe45f3fa",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map(item => {\n  const commit = item.json;\n\n  return {\n    json: {\n      commit_message: commit.commit?.message || \"\",\n      author: commit.commit?.author?.name || \"\",\n      date: commit.commit?.author?.date || \"\",\n      commit_id: commit.sha || \"\"\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        -80
+      ],
+      "id": "9fbc1624-7190-44af-8a6d-fdb9fbeaae31",
+      "name": "Code in JavaScript"
+    },
+    {
+      "parameters": {
+        "jsCode": "const internalKeywords = [\n  \"refactor\",\n  \"rename variable\",\n  \"rename internal\",\n  \"internal\",\n  \"cleanup\",\n  \"code cleanup\",\n  \"formatting\",\n  \"lint\",\n  \"test\",\n  \"tests\",\n  \"unit test\",\n  \"dependency update\",\n  \"upgrade dependency\",\n  \"chore\"\n];\n\nconst output = [];\n\nfor (const item of $input.all()) {\n  const message = item.json.commit_message || \"\";\n  const lowerMessage = message.toLowerCase();\n\n  const isInternal = internalKeywords.some(keyword =>\n    lowerMessage.includes(keyword)\n  );\n\n  if (!isInternal) {\n    output.push({\n      json: {\n        commit_message: message,\n        author: item.json.author,\n        date: item.json.date,\n        commit_id: item.json.commit_id,\n        type: \"user-facing\"\n      }\n    });\n  }\n}\n\nreturn output;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        192,
+        -192
+      ],
+      "id": "8d7b4d4f-5815-4be3-bc4b-ecc3e5f72cfb",
+      "name": "Code in JavaScript1"
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "gpt-5.6-luna",
+          "mode": "list",
+          "cachedResultName": "GPT-5.6-LUNA"
+        },
+        "responses": {
+          "values": [
+            {
+              "content": "Convert this Git commit message into one simple user-facing release note.\n\nGit commit message:\n{{$json.commit_message}}\n\nWrite only one short release note sentence.\nDo not explain the code.\nDo not mention developers, internal technical details, or commit IDs."
+            },
+            {}
+          ]
+        },
+        "builtInTools": {},
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 2.3,
+      "position": [
+        352,
+        -192
+      ],
+      "id": "6542cfae-846c-43c0-a1b0-ca3ff785e3c7",
+      "name": "Message a model",
+      "credentials": {
+        "openAiApi": {
+          "id": null,
+          "name": "",
+          "__aiGatewayManaged": true
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const notes = $input.all()\n  .map(item => item.json.output?.[0]?.content?.[0]?.text || \"\")\n  .filter(Boolean);\n\nreturn [\n  {\n    json: {\n      changelog: notes.join(\"\\n\\n\")\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        704,
+        -192
+      ],
+      "id": "3f6aae5b-b415-47c4-8656-70ac69c63fc8",
+      "name": "Code in JavaScript2"
+    },
+    {
+      "parameters": {
+        "jsCode": "const changelog = $json.changelog || \"\";\n\nconst cleanedNotes = changelog\n  .replace(/\\\\n\\\\n/g, \"\\n\\n\")\n  .split(\"\\n\\n\")\n  .filter(note => note.trim() !== \"\")\n  .filter(note => !note.toLowerCase().includes(\"please provide the git commit message\"));\n\nreturn [{\n  json: {\n    changelog: cleanedNotes.join(\"\\n\\n\")\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        896,
+        -192
+      ],
+      "id": "d7209225-2178-46f5-ab72-b419e028e29e",
+      "name": "Code in JavaScript3"
+    },
+    {
+      "parameters": {
+        "sendTo": "pvnandini16@gmail.com",
+        "subject": "Release Notes Update",
+        "message": "={{$json.changelog}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        1104,
+        -192
+      ],
+      "id": "05a9febd-d684-40f5-8072-6a5bd9aacce9",
+      "name": "Send a message",
+      "webhookId": "fb26f5c8-921f-4db2-8900-b5df29c48cf6",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "TdHyDmlhXv629tf8",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript1": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript2": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript3": {
+      "main": [
+        [
+          {
+            "node": "Send a message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "0285f677-6e8b-4c57-a0b1-5c659e2a47b6",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "4f16a443d77bfced917318789aa590fb4cdf33b88e759ca8a567ac5ffda8b4ba"
+  },
+  "nodeGroups": [],
+  "id": "iMo7YeCbmbpvpUrv",
+  "tags": []
+}
